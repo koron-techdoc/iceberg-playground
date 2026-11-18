@@ -52,6 +52,15 @@ memory D select sum(sales_amount) from iceberg_scan('s3://kaoriya/warehouse/s3-d
 └───────────────────┘
 ```
 
+## `SET unsafe_enable_version_guessing = true;` が要る理由
+
+`SET unsafe_enable_version_guessing = true;` を設定すると、
+DuckDBが最新のメタデータを自動で探せるようになる。
+そのため `s3://kaoriya/warehouse/s3-direct/sample/daily_sales` のような、
+メタデータファイルではないディレクトリ指定でIcebergテーブルへアクセスするには、
+このオプション指定が必須となる。
+
+## ローカルファイルの内容
 
 カタログ情報はローカル(上記Pythonスクリプトを実行したPC)の
 `iceberg_catalog.db` (SQLiteのファイル) に入ってる。
@@ -102,3 +111,13 @@ SQLite-3.54 iceberg_catalog.db-> select * from iceberg_tables;
 このファイル(ステート)を保持しておけば、テーブルへのparquetファイルの追加は手軽にできる。
 
 メタデータからこのステートを再構築すれば、PyIcebergとしてはステートレスでできそう。
+
+ただ現時点では方式の発案までで、実装検証まではしないこととした。
+(やるなら別ドキュメント/リポジトリにする)
+
+## 同時変更リスク
+
+ファイルとしての `iceberg_catalog.db` は SQLite で保護されているものの、
+同時書き込み (`add_files`) のリスクはある。
+
+そのため `add_files` 自体はバッチ処理として実行するなどの排他制御が必要。
