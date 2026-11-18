@@ -339,3 +339,41 @@ PyIcebergによるメタデータとマニフェストの出力先はS3に変更
 
 既存テーブルに対して `add_files()` するには、今のところカタログが必要という認識でいる。
 ただメタデータを読んでテーブルを構築しデータファイルを追加する、ということができるかは要検証。
+
+## 追試
+
+### カタログ無しでのテーブル操作
+
+> メタデータを読んでテーブルを構築しデータファイルを追加する、ということができるかは要検証。
+
+結論: 読むことはできるが書き換えることはできなかった。
+
+実験ディレクトリ: [without-catalog](./without-catalog)
+
+PyIcebergの `StaticTable.from_metadata` でテーブルとして読むことはできた。
+ただその `StaticTable` は書き込み操作を許していない ([参考](https://py.iceberg.apache.org/api/#static-table:~:text=The%20static%2Dtable%20does%20not%20allow%20for%20write%20operations))。
+
+理論上は `StaticTable` を派生して、無理矢理実施することも可能かもしれないが、
+現時点でそこまでする価値があるとは考えられない。
+
+### `allow_moved_paths = false` な実装
+
+> PyIcebergによるメタデータとマニフェストの出力先はS3に変更することもできる。
+> その場合、`allow_moved_paths = true` は不要になるハズ。
+
+結論: S3に直接出力でき、`allow_moved_paths = true` は不要になった。
+ただし `SET unsafe_enable_version_guessing = true;` が必須なことは変わらない。
+
+実験ディレクトリ: [s3-direct](./s3-direct)
+
+ポイント: 以下のようにカタログを準備すること
+
+```
+catalog = load_catalog(
+    "default",
+    **{
+        "uri": "sqlite:///./iceberg_catalog.db",
+        "warehouse": "s3://kaoriya/warehouse/s3-direct",
+    }
+)
+```
